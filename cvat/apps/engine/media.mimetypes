@@ -223,3 +223,4 @@ application/zip zip
 
 # PDF
 application/pdf pdf
+application/vnd.nitf ntf

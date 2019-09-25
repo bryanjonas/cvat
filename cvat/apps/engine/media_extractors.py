@@ -7,6 +7,10 @@ from ffmpy import FFmpeg
 from pyunpack import Archive
 from PIL import Image
 
+##
+import gdal
+##
+
 import mimetypes
 _SCRIPT_DIR = os.path.realpath(os.path.dirname(__file__))
 MEDIA_MIMETYPES_FILES = [
@@ -66,6 +70,38 @@ class ImageListExtractor(MediaExtractor):
             im_data = im_data * (2**8 / im_data.max())
             image = Image.fromarray(im_data.astype(np.int32))
         image = image.convert('RGB')
+        image.save(dest_path, quality=self._image_quality, optimize=True)
+        height = image.height
+        width = image.width
+        image.close()
+        return width, height
+    
+class NTFExtractor(MediaExtractor):
+    def __init__(self, source_path, dest_path, image_quality, step=1, start=0, stop=0):
+        if not source_path:
+            raise Exception('No image found')
+        super().__init__(
+            source_path=sorted(source_path),
+            dest_path=dest_path,
+            image_quality=image_quality,
+            step=1,
+            start=0,
+            stop=0,
+        )
+
+    def __iter__(self):
+        return iter(self._source_path)
+
+    def __getitem__(self, k):
+        return self._source_path[k]
+
+    def __len__(self):
+        return len(self._source_path)
+
+    def save_image(self, k, dest_path):
+        dataset = gdal.Open(self[k], gdal.GA_ReadOnly)
+        band = dataset.GetRasterBand(1).ReadAsArray()
+        image = Image.fromarray(band, 'L')
         image.save(dest_path, quality=self._image_quality, optimize=True)
         height = image.height
         width = image.width
@@ -225,9 +261,7 @@ def _is_video(path):
 
 def _is_image(path):
     mime = mimetypes.guess_type(path)
-    # Exclude vector graphic images because Pillow cannot work with them
-    return mime[0] is not None and mime[0].startswith('image') and \
-        not mime[0].startswith('image/svg')
+    return mime[0] is not None and mime[0].startswith('image')
 
 def _is_dir(path):
     return os.path.isdir(path)
@@ -235,6 +269,12 @@ def _is_dir(path):
 def _is_pdf(path):
     mime = mimetypes.guess_type(path)
     return mime[0] == 'application/pdf'
+
+##
+def _is_ntf(path):
+    mime = mimetypes.guess_type(path)
+    return mime[0] == "application/vnd.nitf"
+##
 
 # 'has_mime_type': function receives 1 argument - path to file.
 #                  Should return True if file has specified media type.
@@ -275,4 +315,12 @@ MEDIA_TYPES = {
         'mode': 'annotation',
         'unique': True,
     },
+    ##
+    'ntf': {
+        'has_mime_type': _is_ntf,
+        'extractor': NTFExtractor,
+        'mode': 'annotation',
+        'unique': True,
+    }
+    ##
 }
