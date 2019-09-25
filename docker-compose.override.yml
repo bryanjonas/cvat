@@ -1,0 +1,28 @@
+version: "2.3"
+
+
+
+services:
+  cvat:
+    environment:
+      DJANGO_SETTINGS_MODULE: cvat.settings.settings
+      ALLOWED_HOSTS: '*'
+      CVAT_SHARE_URL: "Mounted from /mnt/shared host directory"
+    volumes:
+      - cvat_share:/home/django/share:ro
+#ports:
+    #  - "80:8080"
+
+#services:
+#  cvat:
+#    environment:
+#      CVAT_SHARE_URL: "Mounted from /mnt/shared host directory"
+#    volumes:
+#      - cvat_share:/home/django/share:ro
+
+volumes:
+  cvat_share:
+    driver_opts:
+      type: none
+      device: /mnt/shared
+      o: bind
